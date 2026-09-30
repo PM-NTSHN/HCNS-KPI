@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tổng hợp Báo cáo KPI</title>
+<style>
+  /* Nhận diện NTS Hanoi: xanh dương đậm (menu), cam (gạch chân / mục active), xanh ngọc - ngọc lam (icon dịch vụ) */
+  :root{
+    --brand:#0759b5; --brand-dark:#054a99; --brand-2:#0a8fd8; --cyan:#00c2de; --teal:#2fd1b8; --orange:#f15a22;
+    --bg:#f3f6fb; --bg-soft:#f7f9fd; --panel:#ffffff; --border:#dde5f0;
+    --text:#24323f; --text-strong:#0d2b52; --text-dim:#4d5b6b; --text-faint:#7b8797; --track:#e8eef6;
+    --accent:var(--brand); --accent-2:var(--cyan); --accent-3:var(--orange); --accent-4:var(--teal);
+    --ok:#2e9e5b; --late:#f29b1f; --doing:#0a8fd8; --over:#e0443e; --other:#9aa5b4;
+    --radius:14px; --shadow:0 6px 22px rgba(7,89,181,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);
+    font-family:Roboto,"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.5;min-height:100vh;}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 24px;}
+
+  /* Thanh nhận diện trên cùng */
+  .topbar{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(5,74,153,.25);}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;min-height:72px;}
+  .topbar img{height:54px;width:auto;display:block;border-radius:4px;}
+  .brandname{font-weight:700;letter-spacing:.02em;font-size:15px;line-height:1.25;text-transform:uppercase;}
+  .brandname small{display:block;font-weight:400;text-transform:none;opacity:.85;font-size:12.5px;letter-spacing:0;}
+  .topbar .tag-right{margin-left:auto;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;
+    border-bottom:2px solid var(--orange);padding-bottom:2px;}
+
+  header.hero{padding:30px 0 28px;background:#fff;border-bottom:1px solid var(--border);}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--brand);background:rgba(7,89,181,0.07);border:1px solid rgba(7,89,181,0.2);
+    padding:5px 14px;border-radius:999px;font-weight:700;margin-bottom:14px;}
+  h1{font-size:clamp(24px,3.4vw,36px);margin:0 0 22px;font-weight:800;color:var(--brand);text-transform:uppercase;
+    display:inline-block;padding-bottom:8px;border-bottom:3px solid var(--orange);letter-spacing:-0.01em;}
+  .stats{display:flex;flex-wrap:wrap;gap:14px;}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 18px;min-width:130px;box-shadow:var(--shadow);
+    border-left:4px solid var(--c,var(--brand));}
+  .stat:nth-child(1){--c:var(--brand);} .stat:nth-child(2){--c:var(--brand-2);} .stat:nth-child(3){--c:var(--cyan);}
+  .stat:nth-child(4){--c:var(--teal);} .stat:nth-child(5){--c:var(--orange);}
+  .stat .num{font-size:24px;font-weight:800;color:var(--text-strong);font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
+
+  .controls{position:sticky;top:0;z-index:20;background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:12px 0;box-shadow:0 2px 10px rgba(7,89,181,.06);}
+  .controls-inner{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{background:#fff;border:1px solid var(--border);color:var(--text-dim);padding:8px 14px;border-radius:999px;
+    font-size:13.5px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none;}
+  .chip:hover{border-color:var(--brand);color:var(--brand);}
+  .chip.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:inset 0 -3px 0 var(--orange);}
+  .chip.disabled{opacity:.45;pointer-events:none;}
+
+  main{padding:28px 0 60px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:22px;
+    position:relative;overflow:hidden;box-shadow:var(--shadow);}
+  .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--accent-color,var(--brand));}
+  .panel h2{font-size:18px;margin:0 0 4px;color:var(--brand);display:flex;align-items:center;gap:10px;}
+  .panel .hint{color:var(--text-faint);font-size:13px;margin:0 0 16px;}
+  .step{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;
+    background:var(--accent-color,var(--brand));color:#fff;font-weight:800;font-size:14px;box-shadow:0 0 0 3px rgba(7,89,181,.12);}
+
+  .drop{border:2px dashed #b9cbe4;border-radius:14px;padding:30px 20px;text-align:center;cursor:pointer;
+    transition:all .15s;background:#f5f9ff;}
+  .drop:hover,.drop.over{border-color:var(--brand);background:#eaf2fe;}
+  .drop .big{font-size:34px;margin-bottom:6px;}
+  .drop b{color:var(--brand);}
+  .drop small{color:var(--text-faint);display:block;margin-top:6px;}
+
+  table.t{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.t th{text-align:left;color:#fff;background:var(--brand);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;
+    padding:9px 10px;white-space:nowrap;}
+  table.t td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.t td.num,table.t th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  table.t tbody tr:nth-child(even) td{background:#f8fbff;}
+  table.t tr:hover td{background:#eef5ff;}
+  table.t tfoot td{font-weight:800;color:var(--text-strong);background:#fff3ec;border-top:2px solid var(--orange);}
+  .scroll{overflow-x:auto;}
+  input.in,select.in{background:#fff;border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:10px;
+    font-size:14px;outline:none;font-family:inherit;}
+  input.in:focus,select.in:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(7,89,181,.12);}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid;}
+  .b-task{color:var(--brand);border-color:rgba(7,89,181,.35);background:rgba(7,89,181,.08);}
+  .b-proj{color:#c9460f;border-color:rgba(241,90,34,.4);background:rgba(241,90,34,.08);}
+  .b-err{color:var(--over);border-color:rgba(224,68,62,.4);background:rgba(224,68,62,.08);}
+  .x{background:#fff;border:1px solid var(--border);color:var(--text-faint);border-radius:8px;cursor:pointer;padding:3px 9px;}
+  .x:hover{color:var(--over);border-color:var(--over);}
+
+  .settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px;}
+  .settings label{display:block;font-size:12.5px;color:var(--text-dim);margin-bottom:5px;font-weight:700;}
+  .settings .in{width:100%;}
+  .actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+  .btn{padding:11px 20px;border-radius:10px;font-size:14.5px;font-weight:700;border:1px solid var(--border);cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:all .15s;font-family:inherit;}
+  .btn-primary{background:var(--brand);color:#fff;border-color:transparent;}
+  .btn-primary:hover{background:var(--brand-dark);}
+  .btn-green{background:var(--orange);color:#fff;border-color:transparent;}
+  .btn-green:hover{filter:brightness(1.07);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;filter:none;}
+  .fname{font-weight:700;color:var(--text-strong);}
+  .strong{color:var(--text-strong);}
+  .msg{font-size:13.5px;color:var(--text-dim);}
+  .msg.err{color:var(--over);}
+  .msg.ok{color:var(--ok);font-weight:600;}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
+  .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-top:4px solid var(--c,var(--brand));}
+  .kpi .v{font-size:26px;font-weight:800;color:var(--text-strong);font-variant-numeric:tabular-nums;line-height:1.2;}
+  .kpi .l{font-size:12.5px;color:var(--text-faint);font-weight:600;}
+  .kpi .s{font-size:12px;color:var(--text-dim);}
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:18px;}
+  .grid2b{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .box{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .box h3{margin:0 0 12px;font-size:14.5px;color:var(--brand);}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--text-dim);margin-top:8px;}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--track);min-width:120px;}
+  .stack span{display:block;height:100%;}
+  .hbar{display:grid;grid-template-columns:minmax(120px,190px) 1fr 48px;gap:10px;align-items:center;margin:7px 0;font-size:13.5px;}
+  .hbar .track{height:12px;background:var(--track);border-radius:6px;overflow:hidden;}
+  .hbar .fill{height:100%;border-radius:6px;background:var(--brand);}
+  .hbar .n{text-align:right;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums;}
+  .rank{display:inline-flex;width:24px;height:24px;border-radius:50%;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;
+    background:#fff;border:1px solid var(--border);color:var(--text-strong);}
+  .rank.r1{background:var(--orange);color:#fff;border-color:transparent;}
+  .rank.r2{background:var(--brand);color:#fff;border-color:transparent;}
+  .rank.r3{background:var(--cyan);color:#fff;border-color:transparent;}
+  ul.ins{margin:0;padding:0;list-style:none;}
+  ul.ins li{padding:10px 12px 10px 38px;border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:10px;margin-bottom:8px;position:relative;
+    background:#fff;font-size:14px;color:var(--text-dim);}
+  ul.ins li::before{content:attr(data-i);position:absolute;left:12px;top:10px;}
+  ul.ins li b{color:var(--text-strong);}
+  .st{font-weight:700;font-size:12.5px;white-space:nowrap;}
+  .st-ht{color:var(--ok);} .st-htm{color:var(--late);} .st-dl{color:var(--doing);} .st-qh{color:var(--over);} .st-kh{color:var(--other);}
+  .hidden{display:none !important;}
+  .tabview{display:none;} .tabview.show{display:block;}
+  .warn li{margin-bottom:6px;color:var(--text-dim);font-size:13.5px;}
+  .warn li b{color:var(--text-strong);}
+  .personhead{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;}
+  .personhead select{min-width:260px;}
+  .pill{font-size:12.5px;color:var(--brand);background:rgba(7,89,181,.06);border:1px solid rgba(7,89,181,.2);padding:5px 12px;border-radius:999px;}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp 0.8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{background:var(--brand);color:#fff;padding:18px 0;font-size:13.5px;text-align:center;border-top:3px solid var(--orange);}
+  @media (max-width:900px){.grid2,.grid2b{grid-template-columns:1fr;}}
+  @media (max-width:640px){header.hero{padding:22px 0 20px;} .wrap{padding:0 16px;} .hbar{grid-template-columns:110px 1fr 40px;}
+    .topbar .wrap{min-height:60px;} .topbar img{height:42px;} .topbar .tag-right{display:none;}
+    .controls-inner{flex-wrap:nowrap;} .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+    .controls .btn{padding:8px 12px;font-size:13px;white-space:nowrap;} .chip{padding:7px 12px;font-size:13px;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <img src="__LOGO__" alt="NTS Hanoi Corp.">
+    <div class="brandname">Nam Trường Sơn Hà Nội<small>Bộ phận Nhân sự</small></div>
+    <span class="tag-right">Báo cáo KPI</span>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">📊 Nhân sự · Tổng hợp KPI tự động · Offline</span><br>
+    <h1>Tổng hợp Báo cáo KPI tháng</h1>
+    <div class="stats">
+      <div class="stat"><div class="num" id="sFiles">0</div><div class="lbl">File đã nạp</div></div>
+      <div class="stat"><div class="num" id="sTasks">–</div><div class="lbl">Công việc</div></div>
+      <div class="stat"><div class="num" id="sPeople">–</div><div class="lbl">Nhân sự</div></div>
+      <div class="stat"><div class="num" id="sDepts">–</div><div class="lbl">Phòng ban</div></div>
+      <div class="stat"><div class="num" id="sProjects">–</div><div class="lbl">Dự án</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap controls-inner">
+    <div class="chips" id="tabs">
+      <div class="chip active" data-tab="input">① Nạp dữ liệu</div>
+      <div class="chip disabled" data-tab="overview">② Tổng quan</div>
+      <div class="chip disabled" data-tab="person">③ Tra cứu nhân sự</div>
+      <div class="chip disabled" data-tab="quality">④ Lọc đánh giá CL</div>
+      <div class="chip disabled" data-tab="top">⑤ Top & Insight</div>
+      <div class="chip disabled" data-tab="check">⑥ Kiểm tra dữ liệu</div>
+    </div>
+    <button class="btn btn-green" id="btnDownload2" disabled>⬇️ Tải file Excel</button>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ============ TAB: INPUT ============ -->
+  <section class="tabview show" data-view="input">
+    <div class="panel">
+      <h2><span class="step">1</span> Chọn file Excel raw data</h2>
+      <p class="hint">Tối đa 20 file .xlsx / .xls. File công việc phòng ban (VD "T9 admin", "T9 Tech 1") và file dự án (VD "T9 dự án", có cột "Trường dữ liệu tùy chỉnh") được nhận diện tự động.</p>
+      <div class="drop" id="drop">
+        <div class="big">📂</div>
+        <div><b>Kéo thả file vào đây</b> hoặc bấm để chọn</div>
+        <small>Có thể chọn nhiều file một lần · dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu</small>
+        <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.xlsm" hidden>
+      </div>
+      <div class="scroll" style="margin-top:16px">
+        <table class="t" id="fileTable">
+          <thead><tr><th>#</th><th>File</th><th>Loại</th><th class="num">Dòng CV</th><th>Phòng ban (sửa được)</th><th>Kỳ dữ liệu</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="msg" id="fileMsg" style="margin:12px 0 0"></p>
+      <div id="projAssignBox" class="hidden" style="margin-top:18px">
+        <h3 style="margin:0 0 4px;font-size:15px;color:var(--brand)">Phòng ban của nhân sự trong file Dự án</h3>
+        <p class="hint" style="margin:0 0 10px">Dữ liệu file dự án được tách cột O rồi gộp vào sheet "Data" theo phòng ban của từng nhân sự. Mặc định = phòng ban nơi người đó có nhiều việc nhất trong các file phòng ban; có thể đổi.</p>
+        <div class="scroll"><table class="t" id="projAssign"></table></div>
+      </div>
+    </div>
+
+    <div class="panel" style="--accent-color:var(--accent-2)">
+      <h2><span class="step">2</span> Thiết lập kỳ báo cáo & xuất file</h2>
+      <p class="hint">Các giá trị được tự nhận diện từ tên sheet "Tasks (ddmmyyyy-ddmmyyyy)" và tiền tố "T9". Có thể sửa trước khi xuất.</p>
+      <div class="settings">
+        <div><label>Tháng báo cáo (tên file)</label><input class="in" id="optMonth" placeholder="VD: 9.2026"></div>
+        <div><label>Kỳ báo cáo</label><input class="in" id="optPeriod" placeholder="01/09/2026 - 29/09/2026"></div>
+        <div><label>Số CV tối thiểu để xét Top điểm</label><input class="in" id="optMin" type="number" min="1" value="3"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="btnProcess" disabled>⚙️ Xử lý & phân tích</button>
+        <button class="btn btn-green" id="btnDownload" disabled>⬇️ Tải file Excel</button>
+        <span class="msg" id="outName"></span>
+      </div>
+      <p class="msg" id="procMsg" style="margin:12px 0 0"></p>
+    </div>
+  </section>
+
+  <!-- ============ TAB: OVERVIEW ============ -->
+  <section class="tabview" data-view="overview">
+    <div class="panel">
+      <h2>Tổng quan toàn công ty</h2>
+      <p class="hint" id="ovHint"></p>
+      <div class="kpis" id="ovKpis"></div>
+      <div class="grid2">
+        <div class="box"><h3>Cơ cấu trạng thái công việc</h3><div id="ovDonut"></div></div>
+        <div class="box"><h3>Trạng thái theo phòng ban</h3><div id="ovDeptBars"></div></div>
+      </div>
+    </div>
+    <div class="panel" style="--accent-color:var(--accent-3)">
+      <h2>Bảng tổng hợp theo phòng ban</h2>
+      <p class="hint">Công việc từ file dự án đã được gộp vào phòng ban của từng nhân sự (xem bước ① để điều chỉnh).</p>
+      <div class="scroll"><table class="t" id="deptTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: PERSON ============ -->
+  <section class="tabview" data-view="person">
+    <div class="panel" style="--accent-color:var(--accent-2)">
+      <h2>Tra cứu theo nhân sự</h2>
+      <p class="hint">Gộp toàn bộ công việc của nhân sự trên mọi phòng ban và dự án. Trong file Excel, Mastersheet có ô chọn tên tương tự.</p>
+      <div class="personhead">
+        <select class="in" id="personSel"></select>
+        <input class="in" id="personSearch" placeholder="Gõ để lọc tên…" style="min-width:200px">
+        <span class="pill" id="personInfo"></span>
+      </div>
+      <div class="kpis" id="pKpis"></div>
+      <div class="grid2b">
+        <div class="box"><h3>Trạng thái công việc</h3><div id="pStatus"></div></div>
+        <div class="box"><h3>Phân bố đánh giá chất lượng</h3><div id="pQuality"></div></div>
+      </div>
+      <div class="box" style="margin-top:18px"><h3 id="pTaskTitle">Chi tiết công việc</h3>
+        <div class="scroll"><table class="t" id="pTasks"></table></div></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: QUALITY FILTER ============ -->
+  <section class="tabview" data-view="quality">
+    <div class="panel" style="--accent-color:var(--accent-3)">
+      <h2>Lọc theo giá trị "Đánh giá chất lượng"</h2>
+      <p class="hint">Chọn một mức đánh giá để xem danh sách công việc: nhân viên, phòng ban, tên công việc, trạng thái, mức độ, ghi chú. Mastersheet trong file Excel có ô lọc tương tự (mục ⑧).</p>
+      <div class="chips" id="qChips" style="margin-bottom:14px"></div>
+      <div class="personhead">
+        <select class="in" id="qDept"></select>
+        <input class="in" id="qSearch" placeholder="Gõ tên nhân viên / công việc…" style="min-width:240px">
+        <span class="pill" id="qInfo"></span>
+      </div>
+      <div class="scroll"><table class="t" id="qTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: TOP ============ -->
+  <section class="tabview" data-view="top">
+    <div class="grid2b">
+      <div class="panel" style="--accent-color:var(--accent)">
+        <h2>🏋️ Top 5 xử lý nhiều việc nhất</h2>
+        <p class="hint">Tổng công việc trên mọi nguồn (phòng ban + dự án).</p>
+        <div id="top5"></div>
+      </div>
+      <div class="panel" style="--accent-color:var(--accent-3)">
+        <h2>🏆 Top 3 điểm tổng hợp cao nhất</h2>
+        <p class="hint" id="top3Hint"></p>
+        <div id="top3"></div>
+      </div>
+    </div>
+    <div class="panel" style="--accent-color:var(--accent-4)">
+      <h2>💡 Insight tự động</h2>
+      <p class="hint">Sinh tự động từ dữ liệu, cũng được ghi vào Mastersheet.</p>
+      <ul class="ins" id="insights"></ul>
+    </div>
+  </section>
+
+  <!-- ============ TAB: CHECK ============ -->
+  <section class="tabview" data-view="check">
+    <div class="panel" style="--accent-color:var(--accent-4)">
+      <h2>Kiểm tra chất lượng dữ liệu</h2>
+      <p class="hint">Các điểm cần lưu ý trước khi gửi báo cáo.</p>
+      <ul class="warn" id="warnList"></ul>
+    </div>
+    <div class="panel">
+      <h2>Cấu trúc file đầu ra</h2>
+      <p class="hint">Danh sách sheet sẽ được tạo theo thứ tự.</p>
+      <div class="scroll"><table class="t" id="sheetTable"></table></div>
+    </div>
+  </section>
+
+</main>
+
+<footer><div class="wrap">Dữ liệu được tổng hợp từ bộ phận nhân sự- Công ty Nam Trường Sơn Hà Nội</div></footer>
+
+<script>/*LIB:xlsx.full.min.js*/</script>
+<script>/*LIB:exceljs.min.js*/</script>
+<script>/*LIB:jszip.min.js*/</script>
+<script>/*APP:app.js*/</script>
+</body>
+</html>

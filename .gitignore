@@ -1,0 +1,11 @@
+# Dữ liệu nhân sự thật - KHÔNG đưa lên repo public
+File raw data/
+*.xlsx
+*.xls
+*.xlsm
+*.docx
+~$*
+# file tạm
+src/_*.html
+.claude/
+__pycache__/
