@@ -159,10 +159,7 @@ function renderPerson(name) {
   const qmax = Math.max(1, ...QBUCKETS.map(b => a.q[b]));
   $('pQuality').innerHTML = QBUCKETS.map(b => `<div class="hbar" style="grid-template-columns:90px 1fr 44px"><span>${b === '0%' ? '0% (gồm trống)' : b}</span><div class="track"><div class="fill" style="width:${a.q[b] / qmax * 100}%;background:${Q_COLOR[b]}"></div></div><span class="n">${a.q[b]}</span></div>`).join('') +
     (a.text || a.ds ? `<div class="legend">${a.text ? `${a.text} CV đánh giá dạng chữ · ` : ''}${a.ds ? `${a.ds} CV Doanh số` : ''} (không quy đổi %)</div>` : '');
-  const rows = name === ALL ? [] : p.rows;
-  $('pTaskTitle').textContent = name === ALL ? 'Chi tiết công việc — chọn một nhân sự để xem danh sách' : `Chi tiết ${rows.length} công việc của ${name}`;
-  $('pTasks').innerHTML = rows.length ? `<thead><tr><th>#</th><th>Nguồn</th><th>Tên công việc</th><th>Trạng thái</th><th>Mức độ</th><th>Đánh giá CL</th><th>Ghi chú</th></tr></thead><tbody>` +
-    rows.map((r, i) => `<tr><td>${i + 1}</td><td>${h(r.dept + (r.isProj ? ' · Dự án: ' + r.project : ''))}</td><td>${h(r.task)}</td><td>${stHtml(r.status)}</td><td class="num">${h(r.lvRaw)}</td><td class="num">${h(r.qRaw)}</td><td style="color:var(--text-faint);font-size:12.5px">${h(r.note)}</td></tr>`).join('') + '</tbody>' : '';
+  renderPersonTasks(name, p);
 }
 
 function renderTop() {
@@ -187,6 +184,23 @@ function renderCheck() {
   $('sheetTable').innerHTML = `<thead><tr><th>#</th><th>Sheet</th><th>Nội dung</th></tr></thead><tbody>${list.map((x, i) => `<tr><td>${i + 1}</td><td class="fname">${h(x[0])}</td><td>${h(x[1])}</td></tr>`).join('')}</tbody>`;
 }
 
+
+/* ---------- bảng chi tiết tab ③: lọc theo nhân sự × đánh giá chất lượng ---------- */
+const PQ_OPTS = [ALL, '+3%', '+2%', '+1%', '0%', '-1%', '-2%', '-3%', '(Trống)'];
+const pqMatch = (r, o) => o === ALL ? true : o === '(Trống)' ? r.q.kind === 'blank'
+  : o === '0%' ? (r.q.kind === 'blank' || (r.q.kind === 'pct' && r.qRaw === '0%'))   // ô trống tính 0% theo quy tắc
+  : r.q.kind === 'pct' && r.qRaw === o;
+function renderPersonTasks(name, p) {
+  const q = $('pQual').value || ALL;
+  const rows = (name === ALL ? MODEL.data : p.rows).filter(r => pqMatch(r, q));
+  const who = name === ALL ? 'toàn công ty' : name;
+  $('pTaskTitle').textContent = `Chi tiết ${rows.length} công việc của ${who}` + (q === ALL ? '' : ` có đánh giá ${q === '(Trống)' ? '(trống)' : q}${q === '0%' ? ' (gồm ô trống)' : ''}`);
+  $('pTasks').innerHTML = rows.length ? `<thead><tr><th>#</th><th>Nhân viên</th><th>Phòng ban</th><th>Tên công việc</th><th>Trạng thái</th><th class="num">Mức độ</th><th>Đánh giá CL</th><th>Ghi chú</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr><td>${i + 1}</td><td class="fname">${h(r.name)}</td><td>${h(r.dept)}</td><td>${h(r.task)}</td><td>${stHtml(r.status)}</td><td class="num">${h(r.lvRaw)}</td>` +
+      `<td style="font-weight:700;color:${/^\+/.test(r.qRaw) ? 'var(--ok)' : /^-/.test(r.qRaw) ? 'var(--over)' : 'var(--text-dim)'}">${h(r.qRaw || '(trống)')}</td>` +
+      `<td style="color:var(--text-faint);font-size:12.5px">${h([r.isProj ? 'Dự án: ' + r.project : '', r.note].filter(Boolean).join(' · '))}</td></tr>`).join('') + '</tbody>'
+    : '<tbody><tr><td style="color:var(--text-faint);padding:18px">Không có công việc phù hợp.</td></tr></tbody>';
+}
 
 /* ---------- gán phòng ban cho nhân sự trong file dự án ---------- */
 function renderProjAssign() {
@@ -245,6 +259,8 @@ $('btnDownload').addEventListener('click', download);
 $('btnDownload2').addEventListener('click', download);
 ['optMonth', 'optPeriod', 'optMin'].forEach(id => $(id).addEventListener('input', () => { updateOutName(); markDirty(); }));
 $('personSel').addEventListener('change', e => renderPerson(e.target.value));
+$('pQual').innerHTML = PQ_OPTS.map(o => `<option value="${h(o)}">${o === ALL ? 'Đánh giá CL: (Tất cả)' : o === '0%' ? 'Đánh giá CL: 0% (gồm ô trống)' : 'Đánh giá CL: ' + o}</option>`).join('');
+$('pQual').addEventListener('change', () => renderPerson($('personSel').value));
 $('personSearch').addEventListener('input', e => renderPersonSelect(e.target.value));
 $('qDept').addEventListener('change', renderQualityTable);
 $('qSearch').addEventListener('input', renderQualityTable);

@@ -255,10 +255,11 @@
   <section class="tabview" data-view="person">
     <div class="panel" style="--accent-color:var(--accent-2)">
       <h2>Tra cứu theo nhân sự</h2>
-      <p class="hint">Gộp toàn bộ công việc của nhân sự trên mọi phòng ban và dự án. Trong file Excel, Mastersheet có ô chọn tên tương tự.</p>
+      <p class="hint">Chọn nhân sự và/hoặc mức "Đánh giá chất lượng" (+3%…-3%) để xem chi tiết công việc. Mastersheet trong file Excel có 2 ô chọn tương tự ở mục ③.</p>
       <div class="personhead">
         <select class="in" id="personSel"></select>
         <input class="in" id="personSearch" placeholder="Gõ để lọc tên…" style="min-width:200px">
+        <select class="in" id="pQual" title="Lọc theo giá trị Đánh giá chất lượng"></select>
         <span class="pill" id="personInfo"></span>
       </div>
       <div class="kpis" id="pKpis"></div>

@@ -338,11 +338,22 @@ function masterSheet(wb, m, ctx) {
 
   // ③ Tra cứu nhân sự
   const s = r;
-  secBar(s, `B${s}:Q${s}`, '③  TRA CỨU THEO NHÂN SỰ  (chọn tên ở ô vàng — danh sách thả xuống)', 'FF7030A0');
+  secBar(s, `B${s}:Q${s}`, '③  TRA CỨU THEO NHÂN SỰ & ĐÁNH GIÁ CHẤT LƯỢNG  (chọn ở các ô vàng — danh sách thả xuống)', 'FF7030A0');
   const selRow = s + 1, SEL = `$D$${selRow}`;
   put(ws, `B${selRow}:C${selRow}`, '▶ Chọn nhân sự:', { font: { name: FN, size: 11, bold: true, color: { argb: C.navy } }, alignment: { vertical: 'middle' } });
-  put(ws, `D${selRow}:G${selRow}`, ALL, { font: { name: FN, size: 12, bold: true, color: { argb: 'FF7030A0' } }, fill: solidFill(C.yellow), border: box('FFBF8F00'), alignment: center });
-  put(ws, `H${selRow}:Q${selRow}`, '← bấm vào ô vàng, chọn tên trong danh sách; "(Tất cả)" = toàn công ty. Biểu đồ & bảng chi tiết bên dưới tự cập nhật.', { font: { name: FN, size: 9, italic: true, color: { argb: 'FF7F7F7F' } }, alignment: { vertical: 'middle' } });
+  put(ws, `D${selRow}:F${selRow}`, ALL, { font: { name: FN, size: 12, bold: true, color: { argb: 'FF7030A0' } }, fill: solidFill(C.yellow), border: box('FFBF8F00'), alignment: center });
+  // ô lọc "Đánh giá chất lượng" (áp dụng cho bảng chi tiết ⑦)
+  const QSELROW = selRow, QSEL = `$J$${QSELROW}`;
+  put(ws, `G${selRow}:I${selRow}`, '▶ Lọc đánh giá chất lượng:', { font: { name: FN, size: 11, bold: true, color: { argb: 'FFC55A11' } }, alignment: { horizontal: 'right', vertical: 'middle' } });
+  put(ws, `J${selRow}:K${selRow}`, ALL, { font: { name: FN, size: 12, bold: true, color: { argb: 'FFC55A11' } }, fill: solidFill(C.yellow), border: box('FFBF8F00'), alignment: center, numFmt: '@' });
+  put(ws, `L${selRow}:Q${selRow}`, '← bảng chi tiết ⑦ lọc theo cả 2 ô vàng', { font: { name: FN, size: 9, italic: true, color: { argb: 'FF7F7F7F' } }, alignment: { vertical: 'middle', wrapText: true } });
+  const QOPT = [ALL, '+3%', '+2%', '+1%', '0%', '-1%', '-2%', '-3%', '(Trống)'];
+  ws.getCell('X1').value = 'DS mức đánh giá';
+  QOPT.forEach((o, i) => { ws.getCell(`X${i + 2}`).value = o; ws.getCell(`X${i + 2}`).numFmt = '@'; });
+  ws.getColumn('X').hidden = true;
+  ws.getCell(`J${selRow}`).dataValidation = { type: 'list', allowBlank: false, showErrorMessage: true, errorTitle: 'Giá trị không hợp lệ', error: 'Chọn một mức trong danh sách.', formulae: [`$X$2:$X$${QOPT.length + 1}`] };
+  // V3 (ẩn): điều kiện đánh giá; "*" = tất cả, "" = ô trống; chuẩn hoá khi người dùng gõ số (VD 3%)
+  ws.getCell('V3').value = F(`IF(OR(${QSEL}="",${QSEL}=${qs(ALL)}),"*",IF(${QSEL}="(Trống)","",IF(ISNUMBER(${QSEL}),IF(${QSEL}>0,"+","")&ROUND(${QSEL}*100,0)&"%",${QSEL})))`, '*');
   ws.getRow(selRow).height = 26;
   // danh sách chọn (cột ẩn S:U)
   const listNames = [ALL].concat(m.people.map(p => p.name));
@@ -459,85 +470,42 @@ function masterSheet(wb, m, ctx) {
   });
   r += 2;
 
-  // ⑦ Chi tiết công việc của nhân sự được chọn
-  secBar(r, `B${r}:Q${r}`, '⑦  CHI TIẾT CÔNG VIỆC CỦA NHÂN SỰ ĐƯỢC CHỌN', 'FF7030A0');
+  // ⑦ Chi tiết công việc theo bộ lọc mục ③ (nhân sự × đánh giá chất lượng)
+  secBar(r, `B${r}:Q${r}`, '⑦  CHI TIẾT CÔNG VIỆC THEO BỘ LỌC Ở MỤC ③  (nhân sự × đánh giá chất lượng)', 'FF7030A0');
   r++;
-  put(ws, `B${r}:Q${r}`, F(`IF(${CR}="*","→ Chọn một nhân sự ở ô vàng D${selRow} để hiển thị danh sách công việc chi tiết.","Danh sách "&D${mh + 1}&" công việc của "&${SEL})`,
-    `→ Chọn một nhân sự ở ô vàng D${selRow} để hiển thị danh sách công việc chi tiết.`), { font: { name: FN, size: 10, italic: true, color: { argb: 'FF7030A0' } }, alignment: { vertical: 'middle' } });
+  const bR = cB('B'), gR = cB('G');
+  // điều kiện mảng: đúng nhân sự (hoặc tất cả) VÀ đúng mức đánh giá ("0%" gồm cả ô trống theo quy tắc)
+  const COND = `((${bR}=${SEL})+(${CR}="*"))*(($V$3="*")+(${gR}=$V$3)+(($V$3="0%")*(${gR}="")))`;
+  ws.getCell('V4').value = F(`SUMPRODUCT(--(${COND}>0))`, m.data.length);
+  put(ws, `B${r}:Q${r}`, F(`IF(AND(${CR}="*",$V$3="*"),"Toàn bộ "&$V$4&" công việc (chưa lọc) - chọn nhân sự và/hoặc mức đánh giá ở mục ③ để lọc.","Có "&$V$4&" công việc"&IF(${CR}<>"*"," của "&${SEL},"")&IF($V$3<>"*"," có đánh giá "&IF($V$3="","(trống)",IF($V$3="0%","0% (gồm ô trống)",$V$3)),""))`,
+    `Toàn bộ ${m.data.length} công việc (chưa lọc) - chọn nhân sự và/hoặc mức đánh giá ở mục ③ để lọc.`), { font: { name: FN, size: 10, bold: true, italic: true, color: { argb: 'FF7030A0' } }, alignment: { vertical: 'middle' } });
   r++;
-  topHead(r, [['B#', 'STT'], ['C#:D#', 'Phòng ban / nguồn'], ['E#:K#', 'Tên công việc'], ['L#:M#', 'Trạng thái'], ['N#', 'Mức độ'], ['O#:P#', 'Đánh giá CL'], ['Q#', 'Ghi chú']]);
+  topHead(r, [['B#', 'STT'], ['C#:D#', 'Nhân viên'], ['E#:F#', 'Phòng ban'], ['G#:K#', 'Tên công việc'], ['L#:M#', 'Trạng thái'], ['N#', 'Mức độ'], ['O#', 'Đánh giá CL'], ['P#:Q#', 'Ghi chú']]);
   ws.getRow(r).height = 24;
-  const maxRows = Math.min(500, Math.max(10, ...m.people.map(p => p.a.total)));
+  const maxRows = Math.min(1500, Math.max(10, m.data.length));
   const detFirst = r + 1;
-  const bRange = cB('B');
   for (let k = 1; k <= maxRows; k++) {
-    const rr = r + k, W = `$W${rr}`;
-    ws.getCell(`W${rr}`).value = F(`IFERROR(_xlfn.AGGREGATE(15,6,ROW(${bRange})/(${bRange}=${SEL}),${k}),"")`, '');
-    const idx = col => `IF(${W}="","",INDEX(Data!$${col}:$${col},${W})&"")`;
+    const rr = r + k, W = `$W${rr}`, d = m.data[k - 1];
+    ws.getCell(`W${rr}`).value = F(`IFERROR(_xlfn.AGGREGATE(15,6,ROW(${bR})/(${COND}>0),${k}),"")`, d ? k + 1 : '');
+    const idx = (col, v) => F(`IF(${W}="","",INDEX(Data!$${col}:$${col},${W})&"")`, d ? (v == null ? '' : String(v)) : '');
     ws.getRow(rr).height = 24;
-    put(ws, `B${rr}`, F(`IF(${W}="","",${k})`, ''), TD);
-    put(ws, `C${rr}:D${rr}`, F(idx('A'), ''), TDL);
-    put(ws, `E${rr}:K${rr}`, F(idx('C'), ''), TDL);
-    put(ws, `L${rr}:M${rr}`, F(idx('D'), ''), TD);
-    put(ws, `N${rr}`, F(idx('E'), ''), TD);
-    put(ws, `O${rr}:P${rr}`, F(idx('G'), ''), TD);
-    put(ws, `Q${rr}`, F(idx('I'), ''), { ...TDL, font: { name: FN, size: 8, color: { argb: 'FF7F7F7F' } } });
+    put(ws, `B${rr}`, F(`IF(${W}="","",${k})`, d ? k : ''), TD);
+    put(ws, `C${rr}:D${rr}`, idx('B', d && d.name), TDL);
+    put(ws, `E${rr}:F${rr}`, idx('A', d && d.dept), TDL);
+    put(ws, `G${rr}:K${rr}`, idx('C', d && d.task), TDL);
+    put(ws, `L${rr}:M${rr}`, idx('D', d && d.status), TD);
+    put(ws, `N${rr}`, idx('E', d && d.lvRaw), TD);
+    put(ws, `O${rr}`, idx('G', d && d.qRaw), TD);
+    put(ws, `P${rr}:Q${rr}`, idx('I', d && d.note), { ...TDL, font: { name: FN, size: 8, color: { argb: 'FF7F7F7F' } } });
   }
   const detLast = r + maxRows;
   const stRule = (txt, font, bg) => ({ type: 'expression', formulae: [`$L${detFirst}=${qs(txt)}`], style: { font: { color: { argb: font }, bold: true }, fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: bg } } } });
   ws.addConditionalFormatting({ ref: `L${detFirst}:M${detLast}`, rules: [
     stRule('Quá hạn', 'FFC00000', 'FFFDE2E2'), stRule('Hoàn thành muộn', 'FF9C5700', 'FFFFEB9C'),
     stRule('Đang làm', 'FF1F4E79', 'FFDDEBF7'), stRule('Hoàn thành', 'FF006100', 'FFE2F0D9')] });
-
-  // ⑧ Lọc công việc theo giá trị "Đánh giá chất lượng"
-  r = detLast + 3;
-  secBar(r, `B${r}:Q${r}`, '⑧  LỌC CÔNG VIỆC THEO GIÁ TRỊ "ĐÁNH GIÁ CHẤT LƯỢNG"  (chọn mức ở ô vàng)', 'FFC55A11');
-  const qRow = r + 1, QSEL = `$D$${qRow}`;
-  const QOPT = ['+3%', '+2%', '+1%', '0%', '(Trống)', '-1%', '-2%', '-3%'];
-  QOPT.forEach((o, i) => { ws.getCell(`X${i + 2}`).value = o; ws.getCell(`X${i + 2}`).numFmt = '@'; });
-  ws.getCell('X1').value = 'DS mức đánh giá';
-  ws.getColumn('X').hidden = true; ws.getColumn('Y').hidden = true;
-  put(ws, `B${qRow}:C${qRow}`, '▶ Chọn mức đánh giá:', { font: { name: FN, size: 11, bold: true, color: { argb: C.navy } }, alignment: { vertical: 'middle' } });
-  put(ws, `D${qRow}:E${qRow}`, '+3%', { font: { name: FN, size: 12, bold: true, color: { argb: 'FFC55A11' } }, fill: solidFill(C.yellow), border: box('FFBF8F00'), alignment: center, numFmt: '@' });
-  ws.getCell(`D${qRow}`).dataValidation = { type: 'list', allowBlank: false, showErrorMessage: true, errorTitle: 'Giá trị không hợp lệ', error: 'Chọn một mức trong danh sách.', formulae: [`$X$2:$X$${QOPT.length + 1}`] };
-  put(ws, `F${qRow}:Q${qRow}`, '← chọn +3% / +2% / +1% / 0% / (Trống) / -1% / -2% / -3%; danh sách bên dưới tự cập nhật. "(Trống)" = chưa đánh giá (tính 0% theo quy tắc).', { font: { name: FN, size: 9, italic: true, color: { argb: 'FF7F7F7F' } }, alignment: { vertical: 'middle' } });
-  ws.getRow(qRow).height = 26;
-  // điều kiện dùng chung (ô ẩn V2): chuẩn hoá nếu người dùng gõ số 3% thay vì chọn
-  ws.getCell('V2').value = F(`IF(${QSEL}="(Trống)","",IF(ISNUMBER(${QSEL}),IF(${QSEL}>0,"+","")&ROUND(${QSEL}*100,0)&"%",${QSEL}))`, '+3%');
-  const qMatchJs = (d, o) => o === '(Trống)' ? d.q.kind === 'blank' : d.q.kind === 'pct' && d.qRaw === o;
-  const selIdx = m.data.map((d, i) => qMatchJs(d, '+3%') ? i + 2 : 0).filter(Boolean);
-  const cnt2 = qRow + 1;
-  put(ws, `B${cnt2}:C${cnt2}`, 'Số công việc:', { font: { name: FN, size: 10, bold: true, color: { argb: C.navy } }, alignment: { vertical: 'middle' } });
-  put(ws, `D${cnt2}`, F(`SUMPRODUCT(--(${DR('G')}=$V$2))`, selIdx.length), { font: { name: FN, size: 11, bold: true, color: { argb: 'FFC55A11' } }, alignment: { horizontal: 'left', vertical: 'middle' } });
-  put(ws, `F${cnt2}:G${cnt2}`, 'Số nhân viên:', { font: { name: FN, size: 10, bold: true, color: { argb: C.navy } }, alignment: { vertical: 'middle' } });
-  put(ws, `H${cnt2}`, F(`SUMPRODUCT((${DR('G')}=$V$2)/COUNTIFS(${DR('B')},${DR('B')},${DR('G')},${DR('G')}&""))`, new Set(selIdx.map(i => m.data[i - 2].name)).size),
-    { font: { name: FN, size: 11, bold: true, color: { argb: 'FFC55A11' } }, alignment: { horizontal: 'left', vertical: 'middle' } });
-  const qh = cnt2 + 1;
-  const HQ = { ...HD, fill: solidFill('FFC55A11') };
-  [['B', 'STT'], ['C:D', 'Nhân viên'], ['E:F', 'Phòng ban'], ['G:L', 'Tên công việc'], ['M:N', 'Trạng thái'], ['O', 'Mức độ'], ['P:Q', 'Ghi chú']]
-    .forEach(([c, t]) => put(ws, c.includes(':') ? `${c.split(':')[0]}${qh}:${c.split(':')[1]}${qh}` : `${c}${qh}`, t, HQ));
-  ws.getRow(qh).height = 24;
-  const maxQ = Math.min(800, Math.max(10, ...QOPT.map(o => m.data.filter(d => qMatchJs(d, o)).length)));
-  const gRange = DR('G');
-  for (let k = 1; k <= maxQ; k++) {
-    const rr = qh + k, Y = `$Y${rr}`, di = selIdx[k - 1], d = di ? m.data[di - 2] : null;
-    ws.getCell(`Y${rr}`).value = F(`IFERROR(_xlfn.AGGREGATE(15,6,ROW(${gRange})/(${gRange}=$V$2),${k}),"")`, di || '');
-    const idx = (col, v) => F(`IF(${Y}="","",INDEX(Data!$${col}:$${col},${Y})&"")`, d ? (v == null ? '' : String(v)) : '');
-    ws.getRow(rr).height = 24;
-    put(ws, `B${rr}`, F(`IF(${Y}="","",${k})`, d ? k : ''), TD);
-    put(ws, `C${rr}:D${rr}`, idx('B', d && d.name), TDL);
-    put(ws, `E${rr}:F${rr}`, idx('A', d && d.dept), TDL);
-    put(ws, `G${rr}:L${rr}`, idx('C', d && d.task), TDL);
-    put(ws, `M${rr}:N${rr}`, idx('D', d && d.status), TD);
-    put(ws, `O${rr}`, idx('E', d && d.lvRaw), TD);
-    put(ws, `P${rr}:Q${rr}`, idx('I', d && d.note), { ...TDL, font: { name: FN, size: 8, color: { argb: 'FF7F7F7F' } } });
-  }
-  const qLast = qh + maxQ;
-  const stRule2 = (txt, font, bg) => ({ type: 'expression', formulae: [`$M${qh + 1}=${qs(txt)}`], style: { font: { color: { argb: font }, bold: true }, fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: bg } } } });
-  ws.addConditionalFormatting({ ref: `M${qh + 1}:N${qLast}`, rules: [
-    stRule2('Quá hạn', 'FFC00000', 'FFFDE2E2'), stRule2('Hoàn thành muộn', 'FF9C5700', 'FFFFEB9C'),
-    stRule2('Đang làm', 'FF1F4E79', 'FFDDEBF7'), stRule2('Hoàn thành', 'FF006100', 'FFE2F0D9')] });
-  ws.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: `A1:Q${qLast}`,
+  const qRule = (prefix, font, bg) => ({ type: 'expression', formulae: [`LEFT($O${detFirst},1)="${prefix}"`], style: { font: { color: { argb: font }, bold: true }, fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: bg } } } });
+  ws.addConditionalFormatting({ ref: `O${detFirst}:O${detLast}`, rules: [qRule('+', 'FF006100', 'FFE2F0D9'), qRule('-', 'FFC00000', 'FFFDE2E2')] });
+  ws.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: `A1:Q${detLast}`,
     margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } };
   return { ws, charts };
 }
